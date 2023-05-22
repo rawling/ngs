@@ -12,6 +12,10 @@
             height: 100px;
         }
 
+        table.genome tr td.clicked {
+            filter: hue-rotate(180deg) invert(1);
+        }
+
         table.genome.small tr td {
             width: 25px;
             height: 25px;
@@ -199,42 +203,32 @@
     </script>
 
     <script>
-        // Drag events.
-
-        // Copy key information when starting to drag a cell.
-        function dragstart_handler(ev) {
-            ev.dataTransfer.setData("nub/elementId", ev.target.id);
-            ev.dataTransfer.setData("nub/grid", ev.target.dataset.grid);
-            ev.dataTransfer.setData("nub/value", ev.target.className);
-            ev.dataTransfer.effectAllowed = "move";
-        }
-
-        // You can't drop onto a cell in another grid or a cell with the same value.
-        function dragover_handler(ev) {
-            ev.preventDefault();
-
-            if ((ev.dataTransfer.getData("nub/grid") != ev.target.dataset.grid) ||
-                (ev.dataTransfer.getData("nub/value") == ev.target.className)) {
-                ev.dataTransfer.dropEffect = "none";
-            } else {
-                ev.dataTransfer.dropEffect = "move";
+        function nub_click(ev) {
+            if (!window.nub_click_target) {
+                window.nub_click_target = ev.target;
+                ev.target.classList.add('clicked');
+                return;
             }
-        }
+            
+            var source = window.nub_click_target;
+            window.nub_click_target.classList.remove('clicked');
+            window.nub_click_target = null;
+            
+            var dest = ev.target;
 
-        // The cells do not move, but we switch their CSS classes, which switches the icons via CSS,
-        // then update the hidden genome input and re-solve.
-        function drop_handler(ev) {
-            ev.preventDefault();
+            // You can't drop onto a cell in another grid or a cell with the same value.
+            if (source.dataset.grid !== dest.dataset.grid || source.className === dest.className) {
+                return;
+            }
 
-            var source = document.getElementById(ev.dataTransfer.getData("nub/elementId"));
-            var target = document.getElementById(ev.target.id);
+            // The cells do not move, but we switch their CSS classes, which switches the icons via CSS,
+            // then update the hidden genome input and re-solve.
+            var scn = source.className;
+            source.className = dest.className;
+            dest.className = scn;
 
-            source.className = target.className;
-            target.className = ev.dataTransfer.getData("nub/value");
-
-            var grid = ev.dataTransfer.getData("nub/grid");
+            var grid = source.dataset.grid;
             var input = document.getElementById(grid + "_input");
-
             var str = '';
             for (var i = 0; i < 8; i++) {
                 str += document.getElementById(grid + '_' + i).className;
@@ -307,10 +301,7 @@
             var cell = document.getElementById(grid + '_' + i);
             cell.className = input.value[i];
             cell.dataset.grid = grid;
-            cell.draggable = true;
-            cell.ondragstart = dragstart_handler;
-            cell.ondrop = drop_handler;
-            cell.ondragover = dragover_handler;
+            cell.onclick = nub_click;
             cell.ariaLabel = 'Genome icon with the letter ' + input.value[i];
         }
     });
